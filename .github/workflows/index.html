@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html><head><title>Notes Friendly</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>body{font-family:Arial;background:#f0f2f5;padding:20px}.b{max-width:500px;margin:auto;background:#fff;padding:20px;border-radius:15px;box-shadow:0 5px 15px #0002}input,button{width:100%;padding:12px;margin:8px 0;border-radius:8px;border:1px solid #ddd}button{background:#007bff;color:#fff;border:none;font-weight:bold}</style>
+</head><body>
+<div class="b"><h1 style="text-align:center;color:#007bff">Notes Friendly</h1>
+<div id="a"><input id="e" placeholder="Email" type="email"><input id="p" placeholder="Password" type="password"><input id="c" placeholder="Code (25A21A46..)"><button onclick="r()">Register</button><button onclick="l()">Login</button></div>
+<div id="d" style="display:none"><p>Welcome <b id="m"></b> <small><a href="#" onclick="out()">logout</a></small></p><input id="t" placeholder="Title"><input id="f" type="file"><button onclick="u()">Upload (50MB max)</button><h3>Notes</h3><div id="list"></div><hr><button onclick="admin()">Admin Log</button><div id="log" style="display:none"></div></div>
+</div>
+
+<script>
+const supabase = Supabase.createClient('https://kosbrdhjivuwlwtve.supabase.co','sb_publishable_sEEdpx-KJhJm0-f2tr2IHg_BemxzS4g')
+let user=null
+async function r(){let code=document.getElementById('c').value;let{data}=await supabase.from('reg_code').select().eq('code',code).eq('used',false);if(!data.length)return alert('Bad code');let res=await supabase.auth.signUp({email:document.getElementById('e').value,password:document.getElementById('p').value});await supabase.from('users').insert({id:res.data.user.id,email:res.data.user.email,role:'user'});await supabase.from('reg_code').update({used:true}).eq('code',code);alert('OK - now login')}
+async function l(){let{data,error}=await supabase.auth.signInWithPassword({email:document.getElementById('e').value,password:document.getElementById('p').value});if(error)return alert(error.message);user=data.user;document.getElementById('m').innerText=user.email;document.getElementById('a').style.display='none';document.getElementById('d').style.display='block';load()}
+async function out(){await supabase.auth.signOut();location.reload()}
+async function u(){let file=document.getElementById('f').files[0];if(file.size>50*1024*1024)return alert('Max 50MB');let path=user.id+'/'+Date.now()+'_'+file.name;await supabase.storage.from('notes').upload(path,file);await supabase.from('notes').insert({title:document.getElementById('t').value||file.name,file_path:path,uploaded_by:user.id});load()}
+async function load(){let{data}=await supabase.from('notes').select();let h='';data.forEach(n=>h+=`<p><b>${n.title}</b><br><button onclick="v('${n.file_path}')">View</button> <button onclick="dl('${n.file_path}')">Download</button></p>`);document.getElementById('list').innerHTML=h||'No notes'}
+async function v(p){let{data}=supabase.storage.from('notes').getPublicUrl(p);window.open(data.publicUrl,'_blank');log(p,'view')}
+async function dl(p){let{data}=await supabase.storage.from('notes').download(p);let a=document.createElement('a');a.href=URL.createObjectURL(data);a.download=p.split('/').pop();a.click();log(p,'download')}
+async function log(p,a){let{id}=(await supabase.from('notes').select('id').eq('file_path',p).single()).data;await supabase.from('views').insert({note_id:id,user_id:user.id,action:a})}
+async function admin(){let{data:u}=await supabase.from('users').select('role').eq('id',user.id).single();if(!['admin','coadmin'].includes(u.role))return alert('No');document.getElementById('log').style.display='block';let{data}=await supabase.from('views').select('*,notes(title),users(email)').order('timestamp',{ascending:false});document.getElementById('log').innerHTML=data.map(x=>`<small>${x.users.email} ${x.action}ed ${x.notes.title} @ ${new Date(x.timestamp).toLocaleString()}</small><br>`).join('')}
+supabase.auth.onAuthStateChange((e,s)=>{if(s){user=s.user;l()}})
+</script>
+</body></html>
