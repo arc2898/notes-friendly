@@ -9,7 +9,7 @@
 </div>
 
 <script>
-const supabase = Supabase.createClient('https://YOUR_URL.supabase.co','YOUR_ANON_KEY')
+const supabase = Supabase.createClient('https://kosbrdhjivuwlwtve.supabase.co','sb_publishable_sEEdpx-KJhJm0-f2tr2IHg_BemxzS4g')
 let user=null
 async function r(){let code=document.getElementById('c').value;let{data}=await supabase.from('reg_code').select().eq('code',code).eq('used',false);if(!data.length)return alert('Bad code');let res=await supabase.auth.signUp({email:document.getElementById('e').value,password:document.getElementById('p').value});await supabase.from('users').insert({id:res.data.user.id,email:res.data.user.email,role:'user'});await supabase.from('reg_code').update({used:true}).eq('code',code);alert('OK - now login')}
 async function l(){let{data,error}=await supabase.auth.signInWithPassword({email:document.getElementById('e').value,password:document.getElementById('p').value});if(error)return alert(error.message);user=data.user;document.getElementById('m').innerText=user.email;document.getElementById('a').style.display='none';document.getElementById('d').style.display='block';load()}
